@@ -1,0 +1,66 @@
+{
+  "name": "InventoryMovement",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string"
+    },
+    "product_name": {
+      "type": "string"
+    },
+    "branch_id": {
+      "type": "string"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "movement_type": {
+      "type": "string",
+      "enum": [
+        "sale",
+        "purchase",
+        "transfer_in",
+        "transfer_out",
+        "adjustment",
+        "transformation_in",
+        "transformation_out",
+        "return"
+      ],
+      "default": "sale"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "unit_cost": {
+      "type": "number",
+      "default": 0
+    },
+    "reference_id": {
+      "type": "string",
+      "description": "Order, Purchase or Transfer ID"
+    },
+    "reference_type": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "previous_stock": {
+      "type": "number"
+    },
+    "new_stock": {
+      "type": "number"
+    },
+    "movement_date": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Fecha del movimiento"
+    }
+  },
+  "required": [
+    "product_id",
+    "branch_id",
+    "movement_type",
+    "quantity"
+  ]
+}

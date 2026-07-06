@@ -1,0 +1,94 @@
+{
+  "name": "Purchase",
+  "type": "object",
+  "properties": {
+    "purchase_number": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "branch_id": {
+      "type": "string"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_approval",
+        "approved",
+        "ordered",
+        "received",
+        "cancelled"
+      ],
+      "default": "draft"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "quantity_ordered": {
+            "type": "number"
+          },
+          "quantity_received": {
+            "type": "number",
+            "default": 0
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "requested_by": {
+      "type": "string",
+      "description": "Email of requester"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Email of approver"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "received_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "approver_emails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of approver emails to notify"
+    }
+  },
+  "required": [
+    "supplier_id",
+    "branch_id"
+  ]
+}

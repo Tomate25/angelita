@@ -1,0 +1,87 @@
+{
+  "name": "CashRegister",
+  "type": "object",
+  "properties": {
+    "branch_id": {
+      "type": "string"
+    },
+    "branch_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "closed"
+      ],
+      "default": "open"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "opening_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "cash_sales": {
+      "type": "number",
+      "default": 0
+    },
+    "card_sales": {
+      "type": "number",
+      "default": 0
+    },
+    "transfer_sales": {
+      "type": "number",
+      "default": 0
+    },
+    "credit_sales": {
+      "type": "number",
+      "default": 0
+    },
+    "total_sales": {
+      "type": "number",
+      "default": 0
+    },
+    "total_orders": {
+      "type": "number",
+      "default": 0
+    },
+    "cash_in": {
+      "type": "number",
+      "default": 0,
+      "description": "Extra cash income"
+    },
+    "cash_out": {
+      "type": "number",
+      "default": 0,
+      "description": "Cash withdrawals"
+    },
+    "expected_cash": {
+      "type": "number",
+      "default": 0
+    },
+    "actual_cash": {
+      "type": "number",
+      "default": 0
+    },
+    "difference": {
+      "type": "number",
+      "default": 0
+    },
+    "cashier_email": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "branch_id"
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "name": "Order",
+  "type": "object",
+  "properties": {
+    "order_number": {
+      "type": "string"
+    },
+    "branch_id": {
+      "type": "string"
+    },
+    "customer_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "confirmed",
+        "paid",
+        "cancelled",
+        "voided"
+      ],
+      "default": "open"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_price": {
+            "type": "number"
+          },
+          "discount": {
+            "type": "number",
+            "default": 0
+          },
+          "subtotal": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "discount_total": {
+      "type": "number",
+      "default": 0
+    },
+    "tax_total": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "transferencia",
+        "tarjeta",
+        "credito",
+        "mixto"
+      ],
+      "default": "efectivo"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0
+    },
+    "change_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "signature_url": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "opened_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "closed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "voided_reason": {
+      "type": "string"
+    },
+    "cashier_email": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "branch_id"
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "Customer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "cedula": {
+      "type": "string",
+      "description": "N\u00famero de c\u00e9dula o RUC"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "credit_limit": {
+      "type": "number",
+      "default": 0
+    },
+    "credit_days": {
+      "type": "number",
+      "default": 30
+    },
+    "balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Current outstanding balance"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "archived"
+      ],
+      "default": "active",
+      "description": "Estado del cliente: activo o archivado"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "price_list": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "mayorista",
+        "especial"
+      ],
+      "default": "normal"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "Punto de venta al que pertenece el cliente"
+    },
+    "branch_name": {
+      "type": "string",
+      "description": "Nombre del punto de venta"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

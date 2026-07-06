@@ -1,0 +1,27 @@
+{
+  "name": "OrderSequence",
+  "type": "object",
+  "properties": {
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal"
+    },
+    "branch_code": {
+      "type": "string",
+      "description": "Serie: CF, GR, etc."
+    },
+    "last_number": {
+      "type": "number",
+      "default": 0,
+      "description": "\u00daltimo n\u00famero de orden generado"
+    },
+    "last_order_number": {
+      "type": "string",
+      "description": "\u00daltimo n\u00famero de orden completo, ej: CF-00001"
+    }
+  },
+  "required": [
+    "branch_id",
+    "branch_code"
+  ]
+}

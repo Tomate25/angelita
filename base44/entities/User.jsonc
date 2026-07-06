@@ -1,0 +1,25 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "granada",
+        "cofradia",
+        "prefaconsa"
+      ],
+      "default": "granada",
+      "description": "Rol del usuario: admin ve todo, los dem\u00e1s solo ven su sucursal"
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "ID de la sucursal asignada (para roles de sucursal)"
+    },
+    "branch_name": {
+      "type": "string",
+      "description": "Nombre de la sucursal asignada"
+    }
+  }
+}

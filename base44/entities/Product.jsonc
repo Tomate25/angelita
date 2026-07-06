@@ -1,0 +1,83 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "sku": {
+      "type": "string"
+    },
+    "category_id": {
+      "type": "string",
+      "description": "Category reference"
+    },
+    "image_url": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "unidad",
+        "paquete",
+        "caja",
+        "botella",
+        "libra",
+        "kilogramo",
+        "litro",
+        "vaso",
+        "porcion"
+      ],
+      "default": "unidad"
+    },
+    "cost": {
+      "type": "number",
+      "default": 0
+    },
+    "price": {
+      "type": "number",
+      "default": 0
+    },
+    "wholesale_price": {
+      "type": "number",
+      "default": 0
+    },
+    "special_price": {
+      "type": "number",
+      "default": 0
+    },
+    "min_stock": {
+      "type": "number",
+      "default": 0
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "is_favorite": {
+      "type": "boolean",
+      "default": false,
+      "description": "Quick access shortcut"
+    },
+    "tax_rate": {
+      "type": "number",
+      "default": 0
+    },
+    "can_transform": {
+      "type": "boolean",
+      "default": false
+    },
+    "transform_to_product_id": {
+      "type": "string",
+      "description": "Product ID it transforms into"
+    },
+    "transform_quantity": {
+      "type": "number",
+      "description": "How many units result from 1 transformation"
+    }
+  },
+  "required": [
+    "name",
+    "price"
+  ]
+}

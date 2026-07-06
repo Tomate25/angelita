@@ -1,0 +1,65 @@
+{
+  "name": "Transfer",
+  "type": "object",
+  "properties": {
+    "transfer_number": {
+      "type": "string",
+      "description": "Consecutivo del traslado, ej: TRF-00001"
+    },
+    "from_branch_id": {
+      "type": "string"
+    },
+    "from_branch_name": {
+      "type": "string"
+    },
+    "to_branch_id": {
+      "type": "string"
+    },
+    "to_branch_name": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "product_id": {
+            "type": "string"
+          },
+          "product_name": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "total_value": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "voided"
+      ],
+      "default": "active"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "transferred_by": {
+      "type": "string",
+      "description": "Email del usuario que hizo el traslado"
+    }
+  },
+  "required": [
+    "from_branch_id",
+    "to_branch_id"
+  ]
+}

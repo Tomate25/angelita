@@ -1,0 +1,55 @@
+{
+  "name": "ProductPriceSchedule",
+  "type": "object",
+  "properties": {
+    "product_id": {
+      "type": "string",
+      "description": "ID del producto"
+    },
+    "product_name": {
+      "type": "string",
+      "description": "Nombre del producto (para referencia)"
+    },
+    "product_sku": {
+      "type": "string",
+      "description": "SKU del producto (para referencia)"
+    },
+    "new_price": {
+      "type": "number",
+      "description": "Nuevo precio de venta"
+    },
+    "new_wholesale_price": {
+      "type": "number",
+      "description": "Nuevo precio mayorista"
+    },
+    "new_special_price": {
+      "type": "number",
+      "description": "Nuevo precio especial"
+    },
+    "new_cost": {
+      "type": "number",
+      "description": "Nuevo costo"
+    },
+    "effective_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Fecha en que los nuevos precios entran en vigencia"
+    },
+    "applied": {
+      "type": "boolean",
+      "default": false,
+      "description": "Si ya fue aplicado al producto"
+    },
+    "applied_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "product_id",
+    "effective_date"
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "SupplierPayment",
+  "type": "object",
+  "properties": {
+    "supplier_invoice_id": {
+      "type": "string"
+    },
+    "supplier_id": {
+      "type": "string"
+    },
+    "supplier_name": {
+      "type": "string"
+    },
+    "amount": {
+      "type": "number"
+    },
+    "payment_method": {
+      "type": "string",
+      "enum": [
+        "efectivo",
+        "transferencia",
+        "cheque",
+        "tarjeta"
+      ],
+      "default": "transferencia"
+    },
+    "reference": {
+      "type": "string",
+      "description": "N\u00famero de transferencia, cheque, etc."
+    },
+    "branch_id": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "supplier_invoice_id",
+    "amount"
+  ]
+}
