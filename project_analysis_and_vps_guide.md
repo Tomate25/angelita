@@ -1,6 +1,6 @@
 # Guía de Análisis, Base de Datos y Despliegue en VPS Linux (Ubuntu 24.04) con MySQL
 
-Este documento contiene un análisis detallado del proyecto **Angelitas POS**, la estructura de su base de datos (con soporte MySQL) y la guía paso a paso para desplegarlo en un servidor VPS con Linux Ubuntu 24.04, así como las instrucciones para subir el código a GitHub.
+Este documento contiene un análisis detallado del proyecto **Angelitas POS**, la estructura de su base de datos (con soporte MySQL) y la guía paso a paso para desplegarlo en un servidor VPS con Linux Ubuntu 24.04 de manera permanente, así como las instrucciones para subir el código a GitHub.
 
 ---
 
@@ -16,48 +16,25 @@ El proyecto **Angelitas POS** es una aplicación web del tipo **Single Page Appl
 
 Las tablas y campos están definidos originalmente en archivos JSON con comentarios (`.jsonc`) en la carpeta `base44/entities/`. 
 
-He procesado todos estos archivos para ti en los siguientes formatos descargables e inspeccionables en tu carpeta de artefactos:
+He procesado todos estos archivos para ti en los siguientes formatos descargables e inspeccionables en tu carpeta de proyecto:
 
 1.  **Resumen de Campos y Tipos de Datos**: Detalles de cada una de las 18 entidades (tablas), campos, tipos, valores por defecto y enums.
-    *   Ver archivo: [db_schema_details.md](file:///C:/Users/abdia/.gemini/antigravity-cli/brain/430bb670-6ed8-44d9-9cae-a91f4d68ed7a/db_schema_details.md)
-2.  **Script DDL de SQL para MySQL (Recomendado para tu migración)**: Este script crea la base de datos `angelitas_pos` y todas las tablas con sus correspondientes llaves primarias, tipos de datos compatibles con MySQL (`VARCHAR`, `DATETIME`, `DECIMAL`, `JSON`, `TINYINT`) y valores por defecto.
-    *   Ver archivo: [mysql_schema.sql](file:///C:/Users/abdia/.gemini/antigravity-cli/brain/430bb670-6ed8-44d9-9cae-a91f4d68ed7a/mysql_schema.sql)
-3.  **Script DDL de SQL para PostgreSQL**: Por si prefieres esa alternativa.
-    *   Ver archivo: [postgres_schema.sql](file:///C:/Users/abdia/.gemini/antigravity-cli/brain/430bb670-6ed8-44d9-9cae-a91f4d68ed7a/postgres_schema.sql)
-
-### Tablas Principales (Entidades):
-*   `User`: Control de accesos y roles asignados a sucursales (`admin`, `granada`, `cofradia`, `prefaconsa`).
-*   `Branch`: Gestión de puntos de venta (Sucursales).
-*   `Product` y `Category`: Catálogo de inventario, precios (normal, mayorista, especial), costo y transformación de productos.
-*   `Inventory` e `InventoryMovement`: Control de stock físico y kardex por cada sucursal.
-*   `Order` y `OrderSequence`: Registro de ventas en el POS, montos, métodos de pago, totales y correlativos.
-*   `Customer`, `AccountReceivable` y `ARPayment`: Cuentas por cobrar a clientes, límites de crédito y pagos.
-*   `Supplier`, `Purchase`, `SupplierInvoice` y `SupplierPayment`: Compras, órdenes de compra con flujo de aprobación, cuentas por pagar a proveedores y registro de pagos.
-*   `Transfer`: Traslados de mercancía entre sucursales.
-*   `CashRegister`: Control de aperturas, arqueos y cierres de caja por turno.
+    *   Ver archivo: [db_schema_details.md](file:///C:/Users/abdia/OneDrive/Desktop/angelitas-pos-flow/db_schema_details.md)
+2.  **Script DDL de SQL para MySQL**: Este script crea la base de datos `angelitas_pos` y todas las tablas con sus correspondientes llaves primarias, tipos de datos compatibles con MySQL (`VARCHAR`, `DATETIME`, `DECIMAL`, `JSON`, `TINYINT`) y valores por defecto.
+    *   Ver archivo: [mysql_schema.sql](file:///C:/Users/abdia/OneDrive/Desktop/angelitas-pos-flow/mysql_schema.sql)
 
 ---
 
-## 3. Opciones de Despliegue en VPS (Linux Ubuntu 24.04)
-
-### Opción A: Desplegar el Frontend en el VPS + Backend en Base44 Cloud (Easiest & Ready)
-En esta opción, el VPS aloja únicamente los archivos estáticos de tu aplicación (HTML/CSS/JS) de forma segura y veloz usando **Nginx**. La base de datos y la autenticación se siguen gestionando en los servidores de Base44 en la nube.
-*   **Ventajas**: Es sumamente rápido de configurar, no requiere mantenimiento de base de datos ni copias de seguridad en el VPS, y escala automáticamente.
-*   **Dependencias a instalar en el VPS**: `git`, `nodejs`, `npm`, `nginx`.
-
-### Opción B: Autohospedaje Completo (Self-Hosted) con MySQL
-Si deseas que la base de datos se ejecute en tu propio VPS utilizando **MySQL**:
-*   **La Arquitectura Necesaria**: Una aplicación React (frontend) corre en el navegador del usuario y **no puede conectarse directamente a MySQL** por razones de seguridad y diseño. Necesitas un **servidor backend** (como un API REST escrito en Node.js/Express) ejecutándose en tu VPS que reciba las peticiones HTTP del frontend, realice las consultas en la base de datos MySQL y retorne los datos.
-*   **Modificaciones requeridas**:
-    1.  Escribir un servidor Express (Node.js) con rutas para cada una de las 18 tablas (ej: `GET /api/products`, `POST /api/orders`, etc.).
-    2.  Modificar la inicialización del cliente en el frontend [base44Client.js](file:///C:/Users/abdia/OneDrive/Desktop/angelitas-pos-flow/src/api/base44Client.js) para que use fetch/axios apuntando a tu servidor local en lugar del SDK de Base44.
-    3.  Configurar e importar las tablas en el servidor MySQL local del VPS usando nuestro script [mysql_schema.sql](file:///C:/Users/abdia/.gemini/antigravity-cli/brain/430bb670-6ed8-44d9-9cae-a91f4d68ed7a/mysql_schema.sql).
+## 3. Conexión de Datos y Arquitectura con MySQL
+Para ejecutar la aplicación localmente o en un VPS con MySQL, el sistema consta de dos partes:
+1.  **Frontend (React)**: Se compila en archivos estáticos (`dist/`) y es servido de manera rápida por **Nginx**.
+2.  **Backend (Express API)**: Escucha en el puerto `5000` y gestiona las operaciones CRUD con la base de datos local MySQL en XAMPP o en el VPS. Nginx redirige todas las peticiones que van a `/api/*` directamente a este backend.
 
 ---
 
-## 4. Guía de Instalación y Configuración en VPS Ubuntu 24.04 (Para Opción B - MySQL + Frontend)
+## 4. Guía de Instalación y Configuración en VPS Ubuntu 24.04 (MySQL + Frontend + PM2)
 
-Sigue estos pasos en tu servidor VPS Linux Ubuntu 24.04.
+Sigue estos pasos en tu servidor VPS Linux Ubuntu 24.04 para que el sistema funcione siempre en segundo plano:
 
 ### Paso 1: Actualizar el Sistema e Instalar Dependencias Básicas
 Conéctate por SSH a tu VPS y ejecuta:
@@ -67,11 +44,11 @@ sudo apt install -y git curl nginx mysql-server
 ```
 
 ### Paso 2: Configuración y Seguridad de MySQL en Ubuntu
-Inicia el script de seguridad para configurar tu contraseña de root y deshabilitar accesos inseguros:
+Inicia el script de seguridad de MySQL:
 ```bash
 sudo mysql_secure_installation
 ```
-*(Sigue los pasos interactivos: responde Sí a validar contraseñas seguras, define una contraseña fuerte de root, elimina usuarios anónimos, deshabilita login remoto de root y remueve la base de datos de pruebas).*
+*(Sigue los pasos interactivos: responde Sí a validar contraseñas seguras, define una contraseña fuerte de root, elimina usuarios anónimos, deshabilita login remoto de root y remueve la base de datos de pruebas)*.
 
 ### Paso 3: Crear la Base de Datos y el Usuario de la Aplicación
 Accede a la consola de MySQL como administrador:
@@ -97,9 +74,9 @@ EXIT;
 ```
 
 ### Paso 4: Importar las Tablas desde el Archivo SQL
-Una vez que subas el archivo `mysql_schema.sql` a tu VPS, puedes importar toda la estructura de tablas ejecutando el siguiente comando:
+Una vez que clones tu repositorio en el VPS, puedes importar toda la estructura de tablas ejecutando el siguiente comando:
 ```bash
-mysql -u angelitas_user -p angelitas_pos < /ruta/a/tu/archivo/mysql_schema.sql
+mysql -u angelitas_user -p angelitas_pos < /var/www/angelitas-pos-flow/mysql_schema.sql
 ```
 *(Te pedirá la contraseña del usuario `angelitas_user` que definiste en el paso anterior)*.
 
@@ -108,29 +85,71 @@ mysql -u angelitas_user -p angelitas_pos < /ruta/a/tu/archivo/mysql_schema.sql
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
-Verifica las versiones:
-```bash
-node -v
-npm -v
-```
 
 ### Paso 6: Clonar el Proyecto desde GitHub
 ```bash
 cd /var/www
-sudo git clone https://github.com/TU_USUARIO/angelitas-pos-flow.git
+sudo git clone https://github.com/Tomate25/angelita.git angelitas-pos-flow
 cd angelitas-pos-flow
 ```
 
-### Paso 7: Instalar Dependencias de Node y Compilar Frontend
+### Paso 7: Instalar Dependencias y Compilar Frontend
 ```bash
-# Asignar permisos al usuario actual para evitar problemas de permisos de NPM
+# Asignar permisos al usuario actual para evitar problemas de NPM
 sudo chown -R $USER:$USER /var/www/angelitas-pos-flow
 npm install
 npm run build
 ```
 
-### Paso 8: Configurar el Servidor Web Nginx
-Crea un archivo de configuración para tu sitio:
+### Paso 8: Instalar Dependencias y Configurar el Backend
+Navega a la carpeta del backend, configura sus variables de entorno de producción y arráncalo:
+```bash
+cd /var/www/angelitas-pos-flow/server
+npm install
+
+# Crear archivo de variables de entorno para producción
+nano .env
+```
+Copia y pega la siguiente configuración (ajusta la contraseña a la que creaste en el Paso 3):
+```env
+PORT=5000
+DB_HOST=localhost
+DB_USER=angelitas_user
+DB_PASSWORD=tu_contraseña_segura
+DB_NAME=angelitas_pos
+JWT_SECRET=angelitas-jwt-secret-key-2026
+APPROVE_TOKEN_SALT=angelitas-erp-secret-2024
+APP_URL=http://localhost:5000
+```
+*(Guarda el archivo presionando `Ctrl+O`, luego `Enter` y sal con `Ctrl+X`)*.
+
+### Paso 9: Configurar PM2 para que el Backend esté siempre Activo
+Para evitar que el backend de Node.js se cierre al cerrar la terminal SSH y para que se inicie solo si el VPS se reinicia, usaremos el gestor de procesos **PM2**:
+```bash
+# Instalar PM2 de forma global en el VPS
+sudo npm install -g pm2
+
+# Arrancar la API del Backend con PM2 (ejecutar desde /var/www/angelitas-pos-flow/server)
+cd /var/www/angelitas-pos-flow/server
+pm2 start index.js --name "angelitas-api"
+
+# Configurar PM2 para integrarse con el arranque del sistema (systemd)
+pm2 startup systemd
+```
+*El comando anterior te mostrará una línea de comando en consola que empieza con `sudo env PATH=...`. Cópiala completa, pégala en tu terminal y dale Enter.*
+
+Una vez hecho esto, guarda la lista de procesos para que persista tras reinicios:
+```bash
+pm2 save
+```
+
+#### Comandos útiles de PM2:
+*   `pm2 status` -> Muestra el estado del backend (si está online, CPU y RAM consumida).
+*   `pm2 logs` -> Muestra los registros y logs en tiempo real (útil para ver errores).
+*   `pm2 restart angelitas-api` -> Reinicia el servidor backend.
+
+### Paso 10: Configurar el Servidor Web Nginx
+Crea un archivo de configuración para redirigir el tráfico web y la API:
 ```bash
 sudo nano /etc/nginx/sites-available/angelitas-pos
 ```
@@ -143,19 +162,20 @@ server {
     root /var/www/angelitas-pos-flow/dist;
     index index.html;
 
+    # Servir Frontend
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Redirección opcional para tu Backend API personalizado (si lo creas en el puerto 5000)
-    # location /api/ {
-    #     proxy_pass http://localhost:5000/;
-    #     proxy_http_version 1.1;
-    #     proxy_set_header Upgrade $http_upgrade;
-    #     proxy_set_header Connection 'upgrade';
-    #     proxy_set_header Host $host;
-    #     proxy_cache_bypass $http_upgrade;
-    # }
+    # Redirigir llamadas de la API al Backend en puerto 5000
+    location /api/ {
+        proxy_pass http://localhost:5000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
 
     # Caché para recursos estáticos
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|otf)$ {
@@ -177,29 +197,11 @@ sudo systemctl restart nginx
 
 ---
 
-## 5. Cómo Subir el Proyecto a tu GitHub (Desde tu Computadora Local)
+## 5. Cómo Subir los Cambios de Documentación a GitHub (Local)
 
-Ejecuta estos comandos en tu terminal local (PowerShell) dentro de `C:\Users\abdia\OneDrive\Desktop\angelitas-pos-flow`:
-
-1.  **Inicializar Git**:
-    ```powershell
-    git init
-    ```
-2.  **Añadir todos los archivos**:
-    ```powershell
-    git add .
-    ```
-3.  **Hacer el primer Commit**:
-    ```powershell
-    git commit -m "Initial commit - Angelitas POS flow funcional"
-    ```
-4.  **Vincular a tu repositorio de GitHub**:
-    *Crea un repositorio vacío en tu cuenta de GitHub (ej: `angelitas-pos-flow`) y copia el enlace HTTPS:*
-    ```powershell
-    git branch -M main
-    git remote add origin https://github.com/TU_USUARIO/angelitas-pos-flow.git
-    ```
-5.  **Subir el código**:
-    ```powershell
-    git push -u origin main
-    ```
+Para actualizar tu repositorio con estos nuevos cambios de la guía, he ejecutado los siguientes comandos en tu terminal local:
+```powershell
+git add .
+git commit -m "docs: Update VPS guide with PM2 and Nginx Proxy details for production persistence"
+git push origin main
+```
