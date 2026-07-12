@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,6 +10,7 @@ import { toast } from 'sonner';
 
 export default function Login() {
   const { login } = useAuth();
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,8 +26,7 @@ export default function Login() {
     try {
       await login(username, password);
       toast.success('Sesión iniciada correctamente');
-      // Redirect to home/dashboard
-      window.location.href = '/';
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Error de login:', error);
       toast.error(error.message || 'Usuario o contraseña incorrectos');
@@ -37,10 +38,9 @@ export default function Login() {
   const handleTestRoleSelect = async (role) => {
     setIsLoading(true);
     try {
-      // In local testing, username is the role/sucursal, and password is 'password' or same as role
       await login(role, 'password');
       toast.success(`Sesión iniciada como ${role.toUpperCase()}`);
-      window.location.href = '/';
+      navigate('/', { replace: true });
     } catch (error) {
       console.error('Error de login de prueba:', error);
       toast.error(error.message || `No se pudo iniciar sesión como ${role}`);

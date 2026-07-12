@@ -74,13 +74,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async (shouldRedirect = true) => {
+  const logout = async () => {
     setUser(null);
     setIsAuthenticated(false);
     await base44.auth.logout();
-    if (shouldRedirect) {
-      window.location.href = '/login';
-    }
   };
 
   const navigateToLogin = () => {
