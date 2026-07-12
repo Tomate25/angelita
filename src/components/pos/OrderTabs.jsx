@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, X, User } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function OrderTabs({ orders, activeOrderId, onSelectOrder, onAddOrder, onCloseOrder, customers }) {

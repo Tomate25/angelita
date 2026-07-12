@@ -1,6 +1,5 @@
 import React from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Badge } from '@/components/ui/badge';
 import { Package, TrendingDown, TrendingUp, ArrowLeftRight } from 'lucide-react';
 import { format } from 'date-fns';
 

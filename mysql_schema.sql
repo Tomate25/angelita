@@ -321,3 +321,18 @@ CREATE TABLE IF NOT EXISTS `user` (
     `branch_name` VARCHAR(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+-- Indexes for Performance Optimization
+ALTER TABLE `inventory` ADD INDEX `idx_inv_product_branch` (`product_id`, `branch_id`);
+ALTER TABLE `inventory_movement` ADD INDEX `idx_mov_product_branch` (`product_id`, `branch_id`);
+ALTER TABLE `inventory_movement` ADD INDEX `idx_mov_date` (`movement_date`);
+ALTER TABLE `order` ADD INDEX `idx_ord_branch` (`branch_id`);
+ALTER TABLE `order` ADD INDEX `idx_ord_customer` (`customer_id`);
+ALTER TABLE `order` ADD INDEX `idx_ord_created` (`created_date`);
+ALTER TABLE `product` ADD INDEX `idx_prod_sku` (`sku`);
+ALTER TABLE `product` ADD INDEX `idx_prod_cat` (`category_id`);
+ALTER TABLE `product` ADD INDEX `idx_prod_active` (`is_active`);
+ALTER TABLE `customer` ADD INDEX `idx_cust_branch` (`branch_id`);
+ALTER TABLE `product_price_schedule` ADD INDEX `idx_sch_prod_applied` (`product_id`, `applied`);
+ALTER TABLE `a_r_payment` ADD INDEX `idx_arp_rec` (`account_receivable_id`);
+

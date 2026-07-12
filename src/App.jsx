@@ -25,11 +25,17 @@ import PrintReceipt from '@/pages/PrintReceipt';
 import PrintCashRegisterPage from '@/pages/PrintCashRegister';
 import Login from '@/pages/Login';
 
-// Redirige a /pos si el usuario es de sucursal (Cofradia/Granada)
-function AdminRoute({ children }) {
-  const { isBranchUser, loading } = useUserRole();
+// Protected route based on permissions
+function ProtectedRoute({ permission, children }) {
+  const { hasPermission, loading } = useUserRole();
   if (loading) return null;
-  if (isBranchUser) return <Navigate to="/pos" replace />;
+  if (!hasPermission(permission)) {
+    if (hasPermission('pos')) return <Navigate to="/pos" replace />;
+    if (hasPermission('cash_register')) return <Navigate to="/cash-register" replace />;
+    if (hasPermission('inventory')) return <Navigate to="/inventory" replace />;
+    if (hasPermission('orders')) return <Navigate to="/orders" replace />;
+    return <Navigate to="/login" replace />;
+  }
   return children;
 }
 
@@ -76,17 +82,17 @@ const AuthenticatedApp = () => {
       <Route path="/print-receipt" element={<PrintReceipt />} />
       <Route path="/print-cash-register" element={<PrintCashRegisterPage />} />
       <Route element={<AppLayout />}>
-        <Route path="/" element={<AdminRoute><Dashboard /></AdminRoute>} />
-        <Route path="/pos" element={<POS />} />
-        <Route path="/orders" element={<Orders />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/accounts-receivable" element={<AccountsReceivable />} />
-        <Route path="/inventory" element={<InventoryPage />} />
-        <Route path="/purchases" element={<AdminRoute><Purchases /></AdminRoute>} />
-        <Route path="/accounts-payable" element={<AdminRoute><AccountsPayable /></AdminRoute>} />
-        <Route path="/cash-register" element={<CashRegisterPage />} />
-        <Route path="/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-        <Route path="/reports" element={<Reports />} />
+        <Route path="/" element={<ProtectedRoute permission="dashboard"><Dashboard /></ProtectedRoute>} />
+        <Route path="/pos" element={<ProtectedRoute permission="pos"><POS /></ProtectedRoute>} />
+        <Route path="/orders" element={<ProtectedRoute permission="orders"><Orders /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute permission="customers"><Customers /></ProtectedRoute>} />
+        <Route path="/accounts-receivable" element={<ProtectedRoute permission="ar"><AccountsReceivable /></ProtectedRoute>} />
+        <Route path="/inventory" element={<ProtectedRoute permission="inventory"><InventoryPage /></ProtectedRoute>} />
+        <Route path="/purchases" element={<ProtectedRoute permission="purchases"><Purchases /></ProtectedRoute>} />
+        <Route path="/accounts-payable" element={<ProtectedRoute permission="ap"><AccountsPayable /></ProtectedRoute>} />
+        <Route path="/cash-register" element={<ProtectedRoute permission="cash_register"><CashRegisterPage /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute permission="settings"><Settings /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute permission="reports"><Reports /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

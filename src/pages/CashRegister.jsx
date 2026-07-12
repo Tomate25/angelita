@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, LockOpen, Lock, Banknote, CreditCard, Smartphone, HandCoins, Calendar } from 'lucide-react';
+import { DollarSign, LockOpen, Lock, Banknote, CreditCard, HandCoins, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PrintCashRegister from '@/components/print/PrintCashRegister';
@@ -54,15 +54,9 @@ export default function CashRegisterPage() {
   const openRegister = useMutation({
     mutationFn: async (data) => {
       const user = await base44.auth.me();
-      const today = new Date().toISOString().slice(0, 10);
-      const alreadyOpen = registers.find(r =>
-        r.status === 'open' &&
-        r.branch_id === data.branch_id &&
-        r.opened_at?.slice(0, 10) === today
-      );
-      if (alreadyOpen) {
-        throw new Error(`Ya existe una caja abierta hoy para esta sucursal (${alreadyOpen.branch_name})`);
-      }
+      // Un mismo cajero puede tener varias cajas abiertas simultáneamente (diferentes
+      // puntos de facturación). Cada caja es un registro independiente; el POS de cada
+      // dispositivo se asocia a una caja específica para no mezclar puntos.
       const branch = branches.find(b => b.id === data.branch_id);
       return base44.entities.CashRegister.create({
         ...data,
@@ -205,7 +199,7 @@ export default function CashRegisterPage() {
               </Select>
             </div>
             <div><Label>Monto de Apertura</Label><Input type="number" value={openAmount} onChange={e => setOpenAmount(e.target.value)} placeholder="0.00" /></div>
-            <Button className="w-full" onClick={() => openRegister.mutate({ branch_id: branchId, opening_amount: parseFloat(openAmount) || 0 })} disabled={!branchId}>Abrir Caja</Button>
+            <Button className="w-full" onClick={() => openRegister.mutate({ branch_id: branchId, opening_amount: parseFloat(openAmount) || 0 })} disabled={!branchId || openRegister.isPending}>Abrir Caja</Button>
           </div>
         </DialogContent>
       </Dialog>

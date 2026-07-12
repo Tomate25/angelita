@@ -1,4 +1,5 @@
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const pool = mysql.createPool({
@@ -21,10 +22,13 @@ async function initializeDatabase() {
   try {
     console.log('Initializing database schema & seeds...');
 
-    // 1. Check if username and password columns exist in the user table
+    // 1. Check if username, password, permissions, full_name and email columns exist in the user table
     const [columns] = await pool.query('DESCRIBE `user`');
     const hasUsername = columns.some(c => c.Field === 'username');
     const hasPassword = columns.some(c => c.Field === 'password');
+    const hasPermissions = columns.some(c => c.Field === 'permissions');
+    const hasFullName = columns.some(c => c.Field === 'full_name');
+    const hasEmail = columns.some(c => c.Field === 'email');
 
     if (!hasUsername) {
       console.log('Adding column username to user table...');
@@ -33,6 +37,18 @@ async function initializeDatabase() {
     if (!hasPassword) {
       console.log('Adding column password to user table...');
       await pool.query('ALTER TABLE `user` ADD COLUMN `password` VARCHAR(255) NULL');
+    }
+    if (!hasPermissions) {
+      console.log('Adding column permissions to user table...');
+      await pool.query('ALTER TABLE `user` ADD COLUMN `permissions` TEXT NULL');
+    }
+    if (!hasFullName) {
+      console.log('Adding column full_name to user table...');
+      await pool.query('ALTER TABLE `user` ADD COLUMN `full_name` VARCHAR(255) NULL');
+    }
+    if (!hasEmail) {
+      console.log('Adding column email to user table...');
+      await pool.query('ALTER TABLE `user` ADD COLUMN `email` VARCHAR(255) NULL');
     }
 
     // 2. Check if the user table is empty, and seed default users
@@ -76,9 +92,10 @@ async function initializeDatabase() {
       ];
 
       for (const u of defaultUsers) {
+        const hashedPassword = await bcrypt.hash(u.password, 10);
         await pool.query(
           'INSERT INTO `user` (id, created_date, updated_date, role, branch_id, branch_name, username, password) VALUES (?, NOW(), NOW(), ?, ?, ?, ?, ?)',
-          [u.id, u.role, u.branch_id, u.branch_name, u.username, u.password]
+          [u.id, u.role, u.branch_id, u.branch_name, u.username, hashedPassword]
         );
       }
       console.log('Seeded default users successfully!');

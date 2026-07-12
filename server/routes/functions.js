@@ -809,4 +809,51 @@ router.post('/updateCofradiaMovementDates', authenticateToken, async (req, res) 
   }
 });
 
+// 7. POST /api/functions/generateOrderNumber
+router.post('/generateOrderNumber', authenticateToken, async (req, res) => {
+  const { branch_id, branch_code } = req.body || {};
+
+  if (!branch_id || !branch_code) {
+    return res.json({ data: { error: 'Faltan parámetros branch_id o branch_code' } });
+  }
+
+  try {
+    const [sequences] = await pool.query(
+      'SELECT * FROM `order_sequence` WHERE `branch_id` = ?',
+      [branch_id]
+    );
+
+    let nextNumber = 1;
+    let seqId;
+
+    if (sequences.length === 0) {
+      seqId = generateId();
+      const formattedNum = `${branch_code.toUpperCase()}-${String(nextNumber).padStart(6, '0')}`;
+      await pool.query(
+        'INSERT INTO `order_sequence` (id, created_date, updated_date, branch_id, branch_code, last_number, last_order_number) VALUES (?, NOW(), NOW(), ?, ?, ?, ?)',
+        [seqId, branch_id, branch_code.toUpperCase(), nextNumber, formattedNum]
+      );
+    } else {
+      const seq = sequences[0];
+      seqId = seq.id;
+      nextNumber = parseInt(seq.last_number || 0, 10) + 1;
+      const formattedNum = `${branch_code.toUpperCase()}-${String(nextNumber).padStart(6, '0')}`;
+      await pool.query(
+        'UPDATE `order_sequence` SET `last_number` = ?, `last_order_number` = ?, `updated_date` = NOW() WHERE `id` = ?',
+        [nextNumber, formattedNum, seqId]
+      );
+    }
+
+    const finalOrderNumber = `${branch_code.toUpperCase()}-${String(nextNumber).padStart(6, '0')}`;
+    return res.json({
+      data: {
+        order_number: finalOrderNumber
+      }
+    });
+  } catch (err) {
+    console.error('generateOrderNumber error:', err);
+    return res.json({ data: { error: err.message } });
+  }
+});
+
 module.exports = router;

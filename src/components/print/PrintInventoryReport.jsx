@@ -2,7 +2,6 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
 
 /**
  * Botones para imprimir/exportar PDF de reportes de inventario en tamaño Carta.

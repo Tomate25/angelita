@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, LockOpen, Lock, ShoppingCart, ChevronUp } from 'lucide-react';
+import { Search, LockOpen, Lock, ShoppingCart, ChevronUp, Store } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Link } from 'react-router-dom';
 import ProductGrid from '@/components/pos/ProductGrid';
 import Cart from '@/components/pos/Cart';
@@ -66,7 +68,7 @@ export default function POS() {
 
   const { data: cashRegisters = [] } = useQuery({
     queryKey: ['cash-registers'],
-    queryFn: () => base44.entities.CashRegister.list('-created_date', 20),
+    queryFn: () => base44.entities.CashRegister.list('-created_date', 100),
     refetchInterval: 30000,
   });
 
@@ -102,8 +104,26 @@ export default function POS() {
 
   // Caja abierta — para usuario de sucursal, usar su sucursal; para admin, cualquiera
   const activeBranchId = isBranchUser && userBranchId ? userBranchId : branches[0]?.id;
-  const openRegister = cashRegisters.find(r => r.status === 'open' && r.branch_id === activeBranchId)
-    || (isAdmin ? cashRegisters.find(r => r.status === 'open') : null);
+  // Un mismo cajero puede tener varias cajas abiertas (diferentes puntos). Cada
+  // dispositivo/POS se asocia a una caja específica, guardada en localStorage.
+  const availableRegisters = useMemo(() => cashRegisters.filter(r =>
+    r.status === 'open' &&
+    r.cashier_email === (currentUser?.email || '') &&
+    (isBranchUser ? r.branch_id === activeBranchId : true)
+  ), [cashRegisters, currentUser, isBranchUser, activeBranchId]);
+
+  const [selectedRegisterId, setSelectedRegisterId] = useState(() => localStorage.getItem('pos_selected_register_id') || '');
+  useEffect(() => {
+    if (selectedRegisterId) localStorage.setItem('pos_selected_register_id', selectedRegisterId);
+  }, [selectedRegisterId]);
+  // Auto-seleccionar la caja si no hay una válida guardada (o si la guardada se cerró)
+  useEffect(() => {
+    if (availableRegisters.length && !availableRegisters.find(r => r.id === selectedRegisterId)) {
+      setSelectedRegisterId(availableRegisters[0].id);
+    }
+  }, [availableRegisters, selectedRegisterId]);
+
+  const openRegister = availableRegisters.find(r => r.id === selectedRegisterId) || availableRegisters[0] || null;
 
   // Session key única por caja abierta para evitar mezcla entre sucursales
   const SESSION_KEY = openRegister ? `pos_orders_${openRegister.id}` : 'pos_orders_default';
@@ -230,6 +250,7 @@ export default function POS() {
   const handlePayment = async (paymentData) => {
     if (isSubmittingPayment) return;
     setIsSubmittingPayment(true);
+    try {
     // Capturar snapshot de items ANTES de cualquier mutación de estado
     const itemsSnapshot = [...items];
     const subtotalSnapshot = subtotal;
@@ -241,27 +262,14 @@ export default function POS() {
     const branchName = openRegister?.branch_name || activeBranch?.name || '';
     const cashierEmail = currentUser?.email || '';
 
-    // Generar número de orden secuencial — leer fresco de BD para evitar race conditions
+    // Generar número de orden secuencial vía función backend (seguro para varios puntos simultáneos)
     const branchObj = branches.find(b => b.id === branchId);
     const branchCode = branchObj?.code?.toUpperCase() || 'ORD';
-    const freshSequences = await base44.entities.OrderSequence.list();
-    let seqRecord = freshSequences.find(s => s.branch_id === branchId);
-    let nextNumber = 1;
-    if (seqRecord) {
-      nextNumber = (seqRecord.last_number || 0) + 1;
-      await base44.entities.OrderSequence.update(seqRecord.id, {
-        last_number: nextNumber,
-        last_order_number: `${branchCode}-${String(nextNumber).padStart(5, '0')}`,
-      });
-    } else {
-      seqRecord = await base44.entities.OrderSequence.create({
-        branch_id: branchId,
-        branch_code: branchCode,
-        last_number: 1,
-        last_order_number: `${branchCode}-00001`,
-      });
+    const seqResponse = await base44.functions.invoke('generateOrderNumber', { branch_id: branchId, branch_code: branchCode });
+    const orderNum = seqResponse.data?.order_number;
+    if (!orderNum) {
+      throw new Error(seqResponse.data?.error || 'No se pudo generar el número de orden');
     }
-    const orderNum = `${branchCode}-${String(nextNumber).padStart(5, '0')}`;
     queryClient.invalidateQueries({ queryKey: ['order-sequences'] });
 
     const orderData = {
@@ -363,14 +371,18 @@ export default function POS() {
     queryClient.invalidateQueries({ queryKey: ['inventory'] });
     toast.success(`Venta ${orderNum} completada!`, { description: `Total: C$${totalSnapshot.toFixed(2)}` });
     closeTab(activeOrderId);
-    setIsSubmittingPayment(false);
     // Retornar datos completos para el ticket — usando snapshot para garantizar integridad
     return { ...orderData, id: order.id, items: itemsSnapshot };
+    } catch (error) {
+      toast.error('Error al procesar el pago', { description: error?.message || 'Intenta de nuevo' });
+    } finally {
+      setIsSubmittingPayment(false);
+    }
   };
 
 
   // Bloquear POS si no hay caja abierta
-  if (roleLoading || (!cashRegisters.length && branches.length === 0)) {
+  if (roleLoading || !currentUser || (!cashRegisters.length && branches.length === 0)) {
     // Aún cargando rol o datos
     return null;
   }
@@ -400,7 +412,22 @@ export default function POS() {
     <div className="h-[calc(100vh-3.5rem)] flex flex-col sm:flex-row overflow-hidden">
       {/* Left: Product Selection */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-        <div className="p-3 pb-0">
+        <div className="p-3 pb-0 space-y-2">
+          {availableRegisters.length > 1 && (
+            <div className="flex items-center gap-2">
+              <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+              <Select value={openRegister?.id || ''} onValueChange={setSelectedRegisterId}>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
+                <SelectContent>
+                  {availableRegisters.map(r => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.branch_name} · {format(new Date(r.opened_at), 'HH:mm')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

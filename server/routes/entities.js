@@ -1,7 +1,8 @@
 const express = require('express');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { pool } = require('../db');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkEntityPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ function entityToTable(entityName) {
   return mapping[key] || entityName;
 }
 
-const JSON_FIELDS = ['items', 'approver_emails'];
+const JSON_FIELDS = ['items', 'approver_emails', 'permissions'];
 const BOOLEAN_FIELDS = [
   'is_warehouse',
   'is_active',
@@ -62,6 +63,20 @@ const BOOLEAN_FIELDS = [
   'can_transform',
   'sent_to_collection'
 ];
+
+const NUMBER_FIELDS = new Set([
+  'original_amount', 'balance', 'amount', 'opening_amount', 
+  'cash_sales', 'card_sales', 'transfer_sales', 'credit_sales', 
+  'total_sales', 'total_orders', 'cash_in', 'cash_out', 
+  'expected_cash', 'actual_cash', 'difference', 'sort_order', 
+  'credit_limit', 'credit_days', 'quantity', 'avg_cost', 
+  'total_value', 'unit_cost', 'previous_stock', 'new_stock', 
+  'subtotal', 'discount_total', 'tax_total', 'total', 
+  'amount_paid', 'change_amount', 'last_number', 'cost', 
+  'price', 'wholesale_price', 'special_price', 'min_stock', 
+  'tax_rate', 'transform_quantity', 'new_price', 'new_wholesale_price', 
+  'new_special_price', 'new_cost', 'tax_amount'
+]);
 
 // Helper to serialize database rows into JS objects
 function serializeRow(row) {
@@ -81,6 +96,11 @@ function serializeRow(row) {
   for (const field of BOOLEAN_FIELDS) {
     if (newRow[field] !== undefined && newRow[field] !== null) {
       newRow[field] = Boolean(newRow[field]);
+    }
+  }
+  for (const key of Object.keys(newRow)) {
+    if (NUMBER_FIELDS.has(key) && newRow[key] !== undefined && newRow[key] !== null) {
+      newRow[key] = Number(newRow[key]);
     }
   }
   return newRow;
@@ -127,7 +147,7 @@ router.use('/:entityName', (req, res, next) => {
 });
 
 // GET /api/entities/:entityName (supports filtering, sorting, limiting)
-router.get('/:entityName', authenticateToken, async (req, res) => {
+router.get('/:entityName', authenticateToken, checkEntityPermission, async (req, res) => {
   try {
     let sql = `SELECT * FROM \`${req.tableName}\``;
     const conditions = [];
@@ -135,7 +155,7 @@ router.get('/:entityName', authenticateToken, async (req, res) => {
 
     // Extract filters
     for (const [key, val] of Object.entries(req.query)) {
-      if (['limit', 'offset', 'orderBy', 'orderDirection', '_limit', '_offset', '_sort', '_order'].includes(key)) {
+      if (['limit', 'offset', 'orderBy', 'orderDirection', '_limit', '_offset', '_sort', '_order', 'sort', 'skip'].includes(key)) {
         continue;
       }
       conditions.push(`\`${key}\` = ?`);
@@ -147,16 +167,20 @@ router.get('/:entityName', authenticateToken, async (req, res) => {
     }
 
     // Sorting
-    const orderBy = req.query._sort || req.query.orderBy;
-    const orderDir = (req.query._order || req.query.orderDirection || 'ASC').toUpperCase();
+    let orderBy = req.query._sort || req.query.orderBy || req.query.sort;
+    let orderDir = (req.query._order || req.query.orderDirection || 'ASC').toUpperCase();
     if (orderBy) {
+      if (typeof orderBy === 'string' && orderBy.startsWith('-')) {
+        orderDir = 'DESC';
+        orderBy = orderBy.substring(1);
+      }
       const finalDir = ['ASC', 'DESC'].includes(orderDir) ? orderDir : 'ASC';
       sql += ` ORDER BY \`${orderBy}\` ${finalDir}`;
     }
 
     // Limit and Offset
     const limit = parseInt(req.query._limit || req.query.limit, 10);
-    const offset = parseInt(req.query._offset || req.query.offset, 10);
+    const offset = parseInt(req.query._offset || req.query.offset || req.query.skip, 10);
 
     if (!isNaN(limit)) {
       sql += ` LIMIT ?`;
@@ -179,7 +203,7 @@ router.get('/:entityName', authenticateToken, async (req, res) => {
 });
 
 // GET /api/entities/:entityName/:id
-router.get('/:entityName/:id', authenticateToken, async (req, res) => {
+router.get('/:entityName/:id', authenticateToken, checkEntityPermission, async (req, res) => {
   try {
     const [rows] = await pool.query(`SELECT * FROM \`${req.tableName}\` WHERE \`id\` = ?`, [req.params.id]);
     if (rows.length === 0) {
@@ -193,7 +217,7 @@ router.get('/:entityName/:id', authenticateToken, async (req, res) => {
 });
 
 // POST /api/entities/:entityName
-router.post('/:entityName', authenticateToken, async (req, res) => {
+router.post('/:entityName', authenticateToken, checkEntityPermission, async (req, res) => {
   const body = req.body;
 
   try {
@@ -207,6 +231,12 @@ router.post('/:entityName', authenticateToken, async (req, res) => {
         }
         record.created_date = record.created_date ? new Date(record.created_date) : new Date();
         record.updated_date = record.updated_date ? new Date(record.updated_date) : new Date();
+
+        if (req.tableName === 'user' && record.password) {
+          if (!record.password.startsWith('$2a$') && !record.password.startsWith('$2b$')) {
+            record.password = await bcrypt.hash(record.password, 10);
+          }
+        }
 
         const dbRow = deserializeRowForDB(record);
         const keys = Object.keys(dbRow);
@@ -229,6 +259,12 @@ router.post('/:entityName', authenticateToken, async (req, res) => {
       record.created_date = record.created_date ? new Date(record.created_date) : new Date();
       record.updated_date = record.updated_date ? new Date(record.updated_date) : new Date();
 
+      if (req.tableName === 'user' && record.password) {
+        if (!record.password.startsWith('$2a$') && !record.password.startsWith('$2b$')) {
+          record.password = await bcrypt.hash(record.password, 10);
+        }
+      }
+
       const dbRow = deserializeRowForDB(record);
       const keys = Object.keys(dbRow);
       const placeholders = keys.map(() => '?').join(', ');
@@ -247,11 +283,17 @@ router.post('/:entityName', authenticateToken, async (req, res) => {
 });
 
 // PUT /api/entities/:entityName/:id
-router.put('/:entityName/:id', authenticateToken, async (req, res) => {
+router.put('/:entityName/:id', authenticateToken, checkEntityPermission, async (req, res) => {
   const { id } = req.params;
   const record = { ...req.body };
   record.updated_date = new Date();
   delete record.id; // Prevent updating PK
+
+  if (req.tableName === 'user' && record.password) {
+    if (!record.password.startsWith('$2a$') && !record.password.startsWith('$2b$')) {
+      record.password = await bcrypt.hash(record.password, 10);
+    }
+  }
 
   try {
     const dbRow = deserializeRowForDB(record);
@@ -282,7 +324,7 @@ router.put('/:entityName/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/entities/:entityName/:id
-router.delete('/:entityName/:id', authenticateToken, async (req, res) => {
+router.delete('/:entityName/:id', authenticateToken, checkEntityPermission, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -298,7 +340,7 @@ router.delete('/:entityName/:id', authenticateToken, async (req, res) => {
 });
 
 // POST /api/entities/:entityName/filter (custom filters)
-router.post('/:entityName/filter', authenticateToken, async (req, res) => {
+router.post('/:entityName/filter', authenticateToken, checkEntityPermission, async (req, res) => {
   try {
     let sql = `SELECT * FROM \`${req.tableName}\``;
     const conditions = [];
@@ -310,13 +352,13 @@ router.post('/:entityName/filter', authenticateToken, async (req, res) => {
 
     // Parse body for filters and control keys
     for (const [key, val] of Object.entries(req.body || {})) {
-      if (key === '_sort' || key === 'orderBy') {
+      if (key === '_sort' || key === 'orderBy' || key === 'sort') {
         orderBy = val;
       } else if (key === '_order' || key === 'orderDirection') {
         orderDir = val;
       } else if (key === '_limit' || key === 'limit') {
         limit = parseInt(val, 10);
-      } else if (key === '_offset' || key === 'offset') {
+      } else if (key === '_offset' || key === 'offset' || key === 'skip') {
         offset = parseInt(val, 10);
       } else {
         conditions.push(`\`${key}\` = ?`);
@@ -329,6 +371,10 @@ router.post('/:entityName/filter', authenticateToken, async (req, res) => {
     }
 
     if (orderBy) {
+      if (typeof orderBy === 'string' && orderBy.startsWith('-')) {
+        orderDir = 'DESC';
+        orderBy = orderBy.substring(1);
+      }
       const finalDir = ['ASC', 'DESC'].includes(orderDir.toUpperCase()) ? orderDir.toUpperCase() : 'ASC';
       sql += ` ORDER BY \`${orderBy}\` ${finalDir}`;
     }

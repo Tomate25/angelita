@@ -1,13 +1,25 @@
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
+const helmet = require('helmet');
 require('dotenv').config();
 const { initializeDatabase } = require('./db');
 const authRouter = require('./routes/auth');
 const { router: entitiesRouter } = require('./routes/entities');
 const functionsRouter = require('./routes/functions');
+const integrationsRouter = require('./routes/integrations');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Security Headers
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
+
+// Compress responses
+app.use(compression());
 
 // Enable CORS
 app.use(cors({
@@ -19,10 +31,14 @@ app.use(cors({
 // Parse JSON request bodies
 app.use(express.json({ limit: '50mb' })); // Support large payloads e.g. bulk initializations
 
+// Serve static uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/entities', entitiesRouter);
 app.use('/api/functions', functionsRouter);
+app.use('/api/integrations', integrationsRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

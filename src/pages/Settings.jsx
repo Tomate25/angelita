@@ -10,8 +10,9 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Store, Plus, Edit, Package, Tag, Truck, RefreshCw, Upload, Download, DollarSign } from 'lucide-react';
+import { Store, Plus, Edit, Package, Truck, RefreshCw, Upload, Download, Users, Trash } from 'lucide-react';
 import PriceScheduleManager from '@/components/settings/PriceScheduleManager';
+import MarginAudit from '@/components/settings/MarginAudit';
 import { toast } from 'sonner';
 import { useRef } from 'react';
 
@@ -475,6 +476,215 @@ function SuppliersTab() {
   );
 }
 
+function UsersTab() {
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState({
+    username: '',
+    full_name: '',
+    password: '',
+    role: 'vendedor',
+    branch_id: '',
+    branch_name: '',
+    permissions: []
+  });
+
+  const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: () => base44.entities.User.list() });
+  const { data: branches = [] } = useQuery({ queryKey: ['branches'], queryFn: () => base44.entities.Branch.list() });
+
+  const save = useMutation({
+    mutationFn: (d) => {
+      const br = branches.find(b => b.id === d.branch_id);
+      const payload = {
+        ...d,
+        branch_name: br ? br.name : '',
+      };
+      if (editing && !payload.password) {
+        delete payload.password;
+      }
+      return editing ? base44.entities.User.update(editing.id, payload) : base44.entities.User.create(payload);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setShowForm(false);
+      toast.success('Usuario guardado');
+    },
+    onError: (err) => {
+      toast.error('Error al guardar usuario: ' + err.message);
+    }
+  });
+
+  const remove = useMutation({
+    mutationFn: (id) => base44.entities.User.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success('Usuario eliminado');
+    },
+  });
+
+  const openNew = () => {
+    setEditing(null);
+    setForm({ username: '', full_name: '', password: '', role: 'vendedor', branch_id: '', branch_name: '', permissions: [] });
+    setShowForm(true);
+  };
+
+  const openEdit = (u) => {
+    setEditing(u);
+    setForm({
+      username: u.username || '',
+      full_name: u.full_name || '',
+      password: '',
+      role: u.role || 'vendedor',
+      branch_id: u.branch_id || '',
+      branch_name: u.branch_name || '',
+      permissions: Array.isArray(u.permissions) ? u.permissions : []
+    });
+    setShowForm(true);
+  };
+
+  const togglePermission = (perm) => {
+    setForm(f => {
+      const perms = [...f.permissions];
+      const idx = perms.indexOf(perm);
+      if (idx > -1) {
+        perms.splice(idx, 1);
+      } else {
+        perms.push(perm);
+      }
+      return { ...f, permissions: perms };
+    });
+  };
+
+  const availablePermissions = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'pos', label: 'Punto de Venta (POS)' },
+    { id: 'orders', label: 'Pedidos' },
+    { id: 'customers', label: 'Clientes' },
+    { id: 'ar', label: 'Cuentas por Cobrar' },
+    { id: 'inventory', label: 'Inventario' },
+    { id: 'purchases', label: 'Compras' },
+    { id: 'ap', label: 'Cuentas por Pagar' },
+    { id: 'cash_register', label: 'Caja' },
+    { id: 'reports', label: 'Reportes' },
+    { id: 'settings', label: 'Configuración' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="font-heading font-semibold text-lg">Usuarios y Permisos</h2>
+        <Button size="sm" onClick={openNew}>
+          <Plus className="w-4 h-4 mr-1" />Agregar Usuario
+        </Button>
+      </div>
+
+      <div className="space-y-2">
+        {users.map(u => (
+          <Card key={u.id}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">
+                    {u.full_name || u.username}{' '}
+                    <span className="text-muted-foreground text-xs">(@{u.username})</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Rol: <Badge variant="secondary" className="text-[10px] px-1 py-0 capitalize">{u.role}</Badge>
+                    {u.branch_name && ` · Sucursal: ${u.branch_name}`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" onClick={() => openEdit(u)}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                {u.username !== 'admin' && (
+                  <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { if(confirm('¿Seguro que deseas eliminar este usuario?')) remove.mutate(u.id); }}>
+                    <Trash className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <Dialog open={showForm} onOpenChange={setShowForm}>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-heading">{editing ? 'Editar' : 'Nuevo'} Usuario</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nombre completo</Label>
+              <Input value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} placeholder="Ej: Juan Pérez" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Nombre de Usuario *</Label>
+                <Input value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="Ej: juan.perez" disabled={editing && editing.username === 'admin'} />
+              </div>
+              <div className="space-y-2">
+                <Label>{editing ? 'Nueva Contraseña' : 'Contraseña *'}</Label>
+                <Input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder={editing ? 'Dejar en blanco para no cambiar' : '123456'} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Rol</Label>
+                <Select value={form.role} onValueChange={v => setForm({...form, role: v})}>
+                  <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrador</SelectItem>
+                    <SelectItem value="vendedor">Vendedor</SelectItem>
+                    <SelectItem value="cajero">Cajero</SelectItem>
+                    <SelectItem value="sucursal">Usuario de Sucursal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Sucursal asignada</Label>
+                <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v})}>
+                  <SelectTrigger><SelectValue placeholder="Ninguna (Admin)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Ninguna</SelectItem>
+                    {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+              <Label className="font-heading font-medium block text-sm">Permisos del Sistema</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                {availablePermissions.map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-1.5 border rounded bg-background">
+                    <span className="text-xs font-medium">{p.label}</span>
+                    <Switch
+                      checked={form.role === 'admin' ? true : form.permissions.includes(p.id)}
+                      onCheckedChange={() => togglePermission(p.id)}
+                      disabled={form.role === 'admin'}
+                    />
+                  </div>
+                ))}
+              </div>
+              {form.role === 'admin' && (
+                <p className="text-[10px] text-muted-foreground italic">El administrador tiene todos los permisos asignados por defecto.</p>
+              )}
+            </div>
+
+            <Button className="w-full font-heading" onClick={() => save.mutate(form)} disabled={!form.username || (!editing && !form.password)}>Guardar Usuario</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 export default function Settings() {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -485,13 +695,17 @@ export default function Settings() {
           <TabsTrigger value="categories">Categorías</TabsTrigger>
           <TabsTrigger value="products">Productos</TabsTrigger>
           <TabsTrigger value="prices">Precios</TabsTrigger>
+          <TabsTrigger value="margin">Auditoría de Margen</TabsTrigger>
           <TabsTrigger value="suppliers">Proveedores</TabsTrigger>
+          <TabsTrigger value="users">Usuarios y Permisos</TabsTrigger>
         </TabsList>
         <TabsContent value="branches" className="mt-6"><BranchesTab /></TabsContent>
         <TabsContent value="categories" className="mt-6"><CategoriesTab /></TabsContent>
         <TabsContent value="products" className="mt-6"><ProductsTab /></TabsContent>
         <TabsContent value="prices" className="mt-6"><PriceScheduleManager /></TabsContent>
+        <TabsContent value="margin" className="mt-6"><MarginAudit /></TabsContent>
         <TabsContent value="suppliers" className="mt-6"><SuppliersTab /></TabsContent>
+        <TabsContent value="users" className="mt-6"><UsersTab /></TabsContent>
       </Tabs>
     </div>
   );

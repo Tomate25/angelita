@@ -5,11 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, DollarSign, ShoppingCart, BarChart3, Download, Users, FileText, List } from 'lucide-react';
+import { ChevronDown, ChevronRight, BarChart3, Download, Users, FileText, List } from 'lucide-react';
 import { format } from 'date-fns';
+import { parseUTC, toLocalDateString } from '@/utils/time';
 import PrintInventoryReport from '@/components/print/PrintInventoryReport';
 
 function MarginBadge({ margin }) {
@@ -61,7 +61,7 @@ function OrderRow({ order, invCostMap }) {
           </div>
         </td>
         <td className="px-4 py-3 text-sm text-muted-foreground">
-          {order.created_date ? format(new Date(order.created_date), 'dd/MM/yy HH:mm') : '-'}
+          {order.created_date ? format(parseUTC(order.created_date), 'dd/MM/yy HH:mm') : '-'}
         </td>
         <td className="px-4 py-3 text-sm">{order.customer_name || 'Consumidor Final'}</td>
         <td className="px-4 py-3">
@@ -191,7 +191,7 @@ export default function Reports() {
   const filteredOrders = useMemo(() => {
     return orders.filter(o => {
       if (o.status !== 'paid') return false;
-      const d = (o.created_date || '').substring(0, 10);
+      const d = toLocalDateString(o.created_date);
       if (dateFrom && d < dateFrom) return false;
       if (dateTo && d > dateTo) return false;
       if (branchFilter !== 'all' && o.branch_id !== branchFilter) return false;
@@ -210,7 +210,7 @@ export default function Reports() {
       if (o.status !== 'paid') return false;
       if (o.payment_method !== 'credito') return false;
       if (paidOrderIds.has(o.id)) return false; // ya fue cobrado, excluir
-      const d = (o.created_date || '').substring(0, 10);
+      const d = toLocalDateString(o.created_date);
       if (dateFrom && d < dateFrom) return false;
       if (dateTo && d > dateTo) return false;
       if (branchFilter !== 'all' && o.branch_id !== branchFilter) return false;
@@ -280,7 +280,7 @@ export default function Reports() {
         const mar = venta > 0 ? (util / venta) * 100 : 0;
         rows.push([
           idx === 0 ? (o.order_number || o.id) : '',
-          idx === 0 ? (o.created_date || '').substring(0, 10) : '',
+          idx === 0 ? toLocalDateString(o.created_date) : '',
           idx === 0 ? (o.customer_name || 'Consumidor Final') : '',
           idx === 0 ? (o.total || 0).toFixed(2) : '',
           idx === 0 ? orderCOGS.toFixed(2) : '',
@@ -308,7 +308,7 @@ export default function Reports() {
   const listadoOrders = useMemo(() => {
     return orders.filter(o => {
       if (o.status === 'voided' || o.status === 'cancelled') return false;
-      const d = (o.created_date || '').substring(0, 10);
+      const d = toLocalDateString(o.created_date);
       if (dateFrom && d < dateFrom) return false;
       if (dateTo && d > dateTo) return false;
       if (branchFilter !== 'all' && o.branch_id !== branchFilter) return false;
@@ -320,7 +320,7 @@ export default function Reports() {
     const rows = [['Fecha', 'No. Orden', 'Cliente', 'Monto', 'Forma de Pago']];
     listadoOrders.forEach(o => {
       rows.push([
-        (o.created_date || '').substring(0, 10),
+        toLocalDateString(o.created_date),
         o.order_number || o.id,
         o.customer_name || 'Consumidor Final',
         (o.total || 0).toFixed(2),
@@ -400,7 +400,7 @@ export default function Reports() {
               const customer = customers.find(c => c.id === o.customer_id);
               return {
                 orden: o.order_number || o.id,
-                fecha: (o.created_date || '').substring(0, 10),
+                fecha: toLocalDateString(o.created_date),
                 cliente: o.customer_name || 'Consumidor Final',
                 cedula: customer?.cedula || '-',
                 pago: o.payment_method || '',
@@ -587,7 +587,7 @@ export default function Reports() {
                 cedula: c.customer_cedula || '-',
                 ordenes: c.total_orders,
                 total: `C$${formatNumber(c.total_amount)}`,
-                ultima: c.last_purchase ? format(new Date(c.last_purchase), 'dd/MM/yyyy') : '-',
+                ultima: c.last_purchase ? format(parseUTC(c.last_purchase), 'dd/MM/yyyy') : '-',
                 saldo: (c.pending_balance || 0) > 0 ? `C$${formatNumber(c.pending_balance)}` : 'Al día',
                 total_general: `C$${formatNumber(c.total_amount + (c.pending_balance || 0))}`
               }))}
@@ -653,7 +653,7 @@ export default function Reports() {
                             C${formatNumber(customer.total_amount + (customer.pending_balance || 0))}
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-600 font-medium">
-                            {customer.last_purchase ? format(new Date(customer.last_purchase), 'dd/MM/yyyy') : '-'}
+                            {customer.last_purchase ? format(parseUTC(customer.last_purchase), 'dd/MM/yyyy') : '-'}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <Button
@@ -733,7 +733,7 @@ export default function Reports() {
             <PrintInventoryReport
               title={`Listado de Órdenes ${dateFrom} al ${dateTo}`}
               rows={listadoOrders.map(o => ({
-                fecha: (o.created_date || '').substring(0, 10),
+                fecha: toLocalDateString(o.created_date),
                 orden: o.order_number || o.id,
                 cliente: o.customer_name || 'Consumidor Final',
                 monto: `C$${formatNumber(o.total || 0)}`,
@@ -780,7 +780,7 @@ export default function Reports() {
                       {listadoOrders.map(order => (
                         <tr key={order.id} className="border-b hover:bg-muted/30 transition-colors">
                           <td className="px-4 py-3 text-sm text-muted-foreground">
-                            {order.created_date ? format(new Date(order.created_date), 'dd/MM/yyyy HH:mm') : '-'}
+                            {order.created_date ? format(parseUTC(order.created_date), 'dd/MM/yyyy HH:mm') : '-'}
                           </td>
                           <td className="px-4 py-3 font-medium">{order.order_number || `ORD-${order.id?.slice(-4)}`}</td>
                           <td className="px-4 py-3">{order.customer_name || 'Consumidor Final'}</td>

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Printer } from 'lucide-react';
-import { format } from 'date-fns';
 
 /**
  * Ticket POS térmico (80mm) con espacio de firma del cliente.

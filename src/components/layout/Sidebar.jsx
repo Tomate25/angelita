@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useUserRole } from '@/hooks/useUserRole';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 
 const allNavItems = [
   { label: 'Dashboard', icon: LayoutDashboard, path: '/', adminOnly: true },
@@ -34,14 +35,10 @@ const mobileBottomItems = [
 
 export default function Sidebar({ children }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
-  }, []);
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { isAdmin, isBranchUser, userBranchName } = useUserRole();
+  const { logout, user: currentUser } = useAuth();
 
   const navItems = allNavItems.filter(item => isAdmin || !item.adminOnly);
 
@@ -125,15 +122,15 @@ export default function Sidebar({ children }) {
                 <User className="w-3.5 h-3.5 text-sidebar-foreground/70" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-sidebar-foreground truncate">{currentUser.full_name || currentUser.email}</p>
-                <p className="text-[10px] text-sidebar-foreground/50 truncate">{currentUser.email}</p>
+                <p className="text-xs font-semibold text-sidebar-foreground truncate">{currentUser.full_name || currentUser.username}</p>
+                <p className="text-[10px] text-sidebar-foreground/50 truncate capitalize">@{currentUser.username} ({currentUser.role})</p>
               </div>
             </div>
           )}
           {!collapsed && <p className="text-xs text-sidebar-foreground/40 text-center">v1.0 · Angelita's ERP</p>}
           {/* Desktop collapse toggle */}
           <button
-            onClick={() => base44.auth.logout()}
+            onClick={() => logout()}
             className="flex w-full items-center gap-2 mt-1 p-1.5 rounded-lg text-sidebar-foreground/50 hover:text-red-400 hover:bg-sidebar-accent transition-colors"
             title="Cerrar sesión"
           >

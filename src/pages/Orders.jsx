@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,8 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Eye, XCircle, Clock, CheckCircle2, Ban, Edit, ShieldAlert, Printer, Filter, X } from 'lucide-react';
+import { Search, XCircle, Clock, CheckCircle2, Ban, Edit, ShieldAlert, Printer, Filter, X } from 'lucide-react';
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, startOfYear, endOfYear } from 'date-fns';
+import { parseUTC } from '@/utils/time';
 import { toast } from 'sonner';
 import { useUserRole } from '@/hooks/useUserRole';
 import VoidOrderSection from '@/components/orders/VoidOrderSection';
@@ -77,7 +78,7 @@ export default function Orders() {
     if (isAdmin && branchFilter !== 'all' && o.branch_id !== branchFilter) return false;
     // Date filters
     if (dateMode !== 'all') {
-      const d = new Date(o.created_date);
+      const d = parseUTC(o.created_date);
       const parseLocalDate = (str) => {
         const [y, m, day] = str.split('-').map(Number);
         return new Date(y, m - 1, day);
@@ -273,7 +274,7 @@ export default function Orders() {
                 <div className="text-right">
                   <p className="font-heading font-bold">C${(order.total || 0).toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {order.created_date ? format(new Date(order.created_date), 'dd/MM/yy HH:mm') : ''}
+                    {order.created_date ? format(parseUTC(order.created_date), 'dd/MM/yy HH:mm') : ''}
                   </p>
                 </div>
               </CardContent>

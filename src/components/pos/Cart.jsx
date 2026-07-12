@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Minus, Plus, Trash2, ShoppingCart, Percent } from 'lucide-react';
 import CustomerSearch from '@/components/pos/CustomerSearch';

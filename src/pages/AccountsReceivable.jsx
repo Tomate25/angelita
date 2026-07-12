@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,10 @@ export default function AccountsReceivable() {
   const { isAdmin, isBranchUser, userBranchId } = useUserRole();
   const [branchFilter, setBranchFilter] = useState('all');
 
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, search, branchFilter]);
+
   const { data: branches = [] } = useQuery({
     queryKey: ['branches'],
     queryFn: () => base44.entities.Branch.list(),
@@ -43,7 +47,7 @@ export default function AccountsReceivable() {
 
   const { data: accounts = [] } = useQuery({
     queryKey: ['accounts-receivable'],
-    queryFn: () => base44.entities.AccountReceivable.list('-created_date', 200),
+    queryFn: () => base44.entities.AccountReceivable.list('-created_date', 2000),
   });
 
   const payMutation = useMutation({
@@ -152,7 +156,7 @@ export default function AccountsReceivable() {
       </div>
 
       <div className="space-y-3">
-        {filtered.map(ar => {
+        {filtered.slice(0, visibleCount).map(ar => {
           const cfg = statusMap[ar.status] || statusMap.pending;
           const daysOverdue = ar.due_date ? differenceInDays(new Date(), new Date(ar.due_date)) : 0;
           return (
@@ -189,6 +193,15 @@ export default function AccountsReceivable() {
           );
         })}
       </div>
+
+      {filtered.length > visibleCount && (
+        <div className="flex flex-col items-center gap-1 py-2">
+          <Button variant="outline" size="sm" onClick={() => setVisibleCount(c => c + PAGE_SIZE)}>
+            Cargar más
+          </Button>
+          <p className="text-xs text-muted-foreground">Mostrando {Math.min(visibleCount, filtered.length)} de {filtered.length}</p>
+        </div>
+      )}
 
       <CustomerStatement open={showStatement} onClose={() => setShowStatement(false)} />
 
