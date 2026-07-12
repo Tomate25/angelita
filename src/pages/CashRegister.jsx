@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, LockOpen, Lock, Banknote, CreditCard, HandCoins, Calendar } from 'lucide-react';
+import { DollarSign, LockOpen, Lock, Banknote, CreditCard, HandCoins, Calendar, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import PrintCashRegister from '@/components/print/PrintCashRegister';
@@ -21,6 +21,9 @@ export default function CashRegisterPage() {
   const [openAmount, setOpenAmount] = useState('');
   const [actualCash, setActualCash] = useState('');
   const [branchId, setBranchId] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
 
   const { isAdmin, isBranchUser, userBranchId: userBranchIdFromProfile, userRole, loading: roleLoading } = useUserRole();
 
@@ -53,26 +56,26 @@ export default function CashRegisterPage() {
 
   const openRegister = useMutation({
     mutationFn: async (data) => {
-      const user = await base44.auth.me();
-      // Un mismo cajero puede tener varias cajas abiertas simultáneamente (diferentes
-      // puntos de facturación). Cada caja es un registro independiente; el POS de cada
-      // dispositivo se asocia a una caja específica para no mezclar puntos.
       const branch = branches.find(b => b.id === data.branch_id);
+      // Use cached user email, fallback to fresh fetch
+      const cashierEmail = currentUser?.email || currentUser?.username || '';
       return base44.entities.CashRegister.create({
         ...data,
         branch_name: branch?.name || '',
         status: 'open',
         opened_at: new Date().toISOString(),
-        cashier_email: user?.email || '',
+        cashier_email: cashierEmail,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cash-registers'] });
       setShowOpen(false);
+      setBranchId('');
+      setOpenAmount('');
       toast.success('Caja abierta');
     },
     onError: (err) => {
-      toast.error(err.message);
+      toast.error('Error al abrir caja: ' + err.message);
     },
   });
 
@@ -127,7 +130,11 @@ export default function CashRegisterPage() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="font-heading font-bold text-lg">{reg.branch_name}</p>
-                      <p className="text-xs text-muted-foreground">{reg.cashier_email}</p>
+                      {reg.cashier_email && (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <User className="w-3 h-3" />{reg.cashier_email}
+                        </p>
+                      )}
                       <p className="text-xs text-muted-foreground">
                         Abierta: {reg.opened_at ? format(new Date(reg.opened_at), 'dd/MM HH:mm') : ''}
                       </p>
@@ -182,14 +189,16 @@ export default function CashRegisterPage() {
       </div>
 
       {/* Open Dialog */}
-      <Dialog open={showOpen} onOpenChange={setShowOpen}>
+      <Dialog open={showOpen} onOpenChange={(open) => { setShowOpen(open); if (!open) { setBranchId(''); setOpenAmount(''); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Abrir Caja</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Sucursal</Label>
+              <Label>Sucursal <span className="text-destructive">*</span></Label>
               <Select value={branchId} onValueChange={setBranchId} disabled={isBranchUser && !!userBranchId}>
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectTrigger className={!branchId ? 'border-destructive' : ''}>
+                  <SelectValue placeholder="— Seleccionar sucursal —" />
+                </SelectTrigger>
                 <SelectContent>
                   {(isBranchUser && userBranchId
                     ? branches.filter(b => b.id === userBranchId)
@@ -197,9 +206,16 @@ export default function CashRegisterPage() {
                   ).map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {!branchId && <p className="text-xs text-destructive mt-1">Debes seleccionar una sucursal</p>}
             </div>
-            <div><Label>Monto de Apertura</Label><Input type="number" value={openAmount} onChange={e => setOpenAmount(e.target.value)} placeholder="0.00" /></div>
-            <Button className="w-full" onClick={() => openRegister.mutate({ branch_id: branchId, opening_amount: parseFloat(openAmount) || 0 })} disabled={!branchId || openRegister.isPending}>Abrir Caja</Button>
+            <div><Label>Monto de Apertura (C$)</Label><Input type="number" value={openAmount} onChange={e => setOpenAmount(e.target.value)} placeholder="0.00" /></div>
+            <Button
+              className="w-full"
+              onClick={() => openRegister.mutate({ branch_id: branchId, opening_amount: parseFloat(openAmount) || 0 })}
+              disabled={!branchId || openRegister.isPending}
+            >
+              {openRegister.isPending ? 'Abriendo...' : 'Abrir Caja'}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

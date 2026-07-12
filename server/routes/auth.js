@@ -59,6 +59,7 @@ router.post('/login', async (req, res) => {
         id: user.id,
         role: user.role,
         username: user.username,
+        email: user.email || user.username, // email fallback to username for cashier_email matching
         branch_id: user.branch_id,
         branch_name: user.branch_name,
         permissions: permissionsArray

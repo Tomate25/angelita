@@ -37,9 +37,9 @@ export default function POS() {
   const [showPayment, setShowPayment] = useState(false);
   const [showCartMobile, setShowCartMobile] = useState(false);
 
-  const { isAdmin, isBranchUser, userBranchId: userBranchIdFromProfile, userRole, loading: roleLoading } = useUserRole();
-  const [currentUser, setCurrentUser] = useState(null);
-  useEffect(() => { base44.auth.me().then(u => setCurrentUser(u)).catch(() => {}); }, []);
+  const { isAdmin, isBranchUser, userBranchId: userBranchIdFromProfile, userRole, loading: roleLoading, user: authUser } = useUserRole();
+  // Use authUser from context directly (no extra fetch needed)
+  const currentUser = authUser;
 
   const { data: orderSequences = [] } = useQuery({
     queryKey: ['order-sequences'],
@@ -102,15 +102,26 @@ export default function POS() {
   // Catálogo de clientes compartido para todas las sucursales
   const scopedCustomers = customers;
 
-  // Caja abierta — para usuario de sucursal, usar su sucursal; para admin, cualquiera
-  const activeBranchId = isBranchUser && userBranchId ? userBranchId : branches[0]?.id;
-  // Un mismo cajero puede tener varias cajas abiertas (diferentes puntos). Cada
-  // dispositivo/POS se asocia a una caja específica, guardada en localStorage.
-  const availableRegisters = useMemo(() => cashRegisters.filter(r =>
-    r.status === 'open' &&
-    r.cashier_email === (currentUser?.email || '') &&
-    (isBranchUser ? r.branch_id === activeBranchId : true)
-  ), [cashRegisters, currentUser, isBranchUser, activeBranchId]);
+  // Cajas disponibles:
+  // 1. Para usuario de sucursal: solo cajas abiertas de su sucursal
+  // 2. Para admin: todas las cajas abiertas
+  // Primero intenta filtrar por email del cajero; si no hay coincidencia (cajas antiguas sin email),
+  // cae al filtrado solo por sucursal.
+  const availableRegisters = useMemo(() => {
+    const openRegs = cashRegisters.filter(r => r.status === 'open');
+    if (isBranchUser && userBranchId) {
+      // Usuario de sucursal: solo ve su sucursal
+      return openRegs.filter(r => r.branch_id === userBranchId);
+    }
+    // Admin: ve todas las cajas abiertas
+    // Prioriza las del mismo cajero si hay email o username
+    const myIdentifier = currentUser?.email || currentUser?.username;
+    if (myIdentifier) {
+      const mine = openRegs.filter(r => r.cashier_email === myIdentifier || r.cashier_email === currentUser?.username);
+      if (mine.length > 0) return mine;
+    }
+    return openRegs;
+  }, [cashRegisters, currentUser, isBranchUser, userBranchId]);
 
   const [selectedRegisterId, setSelectedRegisterId] = useState(() => localStorage.getItem('pos_selected_register_id') || '');
   useEffect(() => {
@@ -121,9 +132,16 @@ export default function POS() {
     if (availableRegisters.length && !availableRegisters.find(r => r.id === selectedRegisterId)) {
       setSelectedRegisterId(availableRegisters[0].id);
     }
-  }, [availableRegisters, selectedRegisterId]);
+    // Si la caja seleccionada se cerró, limpiar
+    if (selectedRegisterId && cashRegisters.length > 0 && !cashRegisters.find(r => r.id === selectedRegisterId && r.status === 'open')) {
+      setSelectedRegisterId('');
+    }
+  }, [availableRegisters, selectedRegisterId, cashRegisters]);
 
   const openRegister = availableRegisters.find(r => r.id === selectedRegisterId) || availableRegisters[0] || null;
+
+  // La sucursal activa se deriva SIEMPRE de la caja abierta (no de branches[0])
+  const activeBranchId = openRegister?.branch_id || (isBranchUser && userBranchId ? userBranchId : branches[0]?.id);
 
   // Session key única por caja abierta para evitar mezcla entre sucursales
   const SESSION_KEY = openRegister ? `pos_orders_${openRegister.id}` : 'pos_orders_default';
@@ -260,7 +278,7 @@ export default function POS() {
     const activeBranch = branches.find(b => b.id === activeBranchId) || branches[0];
     const branchId = openRegister?.branch_id || activeBranch?.id || '';
     const branchName = openRegister?.branch_name || activeBranch?.name || '';
-    const cashierEmail = currentUser?.email || '';
+    const cashierEmail = currentUser?.email || currentUser?.username || '';
 
     // Generar número de orden secuencial vía función backend (seguro para varios puntos simultáneos)
     const branchObj = branches.find(b => b.id === branchId);
@@ -382,8 +400,8 @@ export default function POS() {
 
 
   // Bloquear POS si no hay caja abierta
-  if (roleLoading || !currentUser || (!cashRegisters.length && branches.length === 0)) {
-    // Aún cargando rol o datos
+  if (roleLoading || !currentUser) {
+    // Aún cargando rol o usuario
     return null;
   }
   if (!openRegister) {
@@ -413,11 +431,17 @@ export default function POS() {
       {/* Left: Product Selection */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
         <div className="p-3 pb-0 space-y-2">
-          {availableRegisters.length > 1 && (
-            <div className="flex items-center gap-2">
-              <Store className="w-4 h-4 text-muted-foreground shrink-0" />
+          {/* Indicador de caja activa — siempre visible */}
+          <div className="flex items-center gap-2 text-xs bg-green-500/10 border border-green-500/20 rounded-md px-3 py-1.5">
+            <Store className="w-3.5 h-3.5 text-green-600 shrink-0" />
+            <span className="text-green-700 dark:text-green-400 font-medium">
+              {openRegister.branch_name} · Caja abierta {openRegister.opened_at ? format(new Date(openRegister.opened_at), 'HH:mm') : ''}
+            </span>
+            {availableRegisters.length > 1 && (
               <Select value={openRegister?.id || ''} onValueChange={setSelectedRegisterId}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar caja" /></SelectTrigger>
+                <SelectTrigger className="h-6 text-xs ml-auto border-green-400/30 bg-transparent w-auto min-w-[120px]">
+                  <SelectValue placeholder="Cambiar caja" />
+                </SelectTrigger>
                 <SelectContent>
                   {availableRegisters.map(r => (
                     <SelectItem key={r.id} value={r.id}>
@@ -426,8 +450,8 @@ export default function POS() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
+            )}
+          </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input

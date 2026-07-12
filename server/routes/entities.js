@@ -153,6 +153,23 @@ router.get('/:entityName', authenticateToken, checkEntityPermission, async (req,
     const conditions = [];
     const params = [];
 
+    // Server-side branch scoping for non-admin users
+    // If the user has a branch_id in their token, automatically filter branch-scoped tables
+    const BRANCH_SCOPED_TABLES = new Set([
+      'order', 'cash_register', 'account_receivable', 'a_r_payment',
+      'inventory', 'inventory_movement', 'transfer'
+    ]);
+    const userBranchId = req.user?.branch_id;
+    const isAdmin = req.user?.role === 'admin';
+
+    if (!isAdmin && userBranchId && BRANCH_SCOPED_TABLES.has(req.tableName)) {
+      // Only inject if the client hasn't already passed a branch_id filter
+      if (!Object.prototype.hasOwnProperty.call(req.query, 'branch_id')) {
+        conditions.push('`branch_id` = ?');
+        params.push(userBranchId);
+      }
+    }
+
     // Extract filters
     for (const [key, val] of Object.entries(req.query)) {
       if (['limit', 'offset', 'orderBy', 'orderDirection', '_limit', '_offset', '_sort', '_order', 'sort', 'skip'].includes(key)) {
@@ -349,6 +366,22 @@ router.post('/:entityName/filter', authenticateToken, checkEntityPermission, asy
     let orderDir = 'ASC';
     let limit = null;
     let offset = null;
+
+    // Server-side branch scoping for non-admin users
+    const BRANCH_SCOPED_TABLES = new Set([
+      'order', 'cash_register', 'account_receivable', 'a_r_payment',
+      'inventory', 'inventory_movement', 'transfer'
+    ]);
+    const userBranchId = req.user?.branch_id;
+    const isAdmin = req.user?.role === 'admin';
+
+    const bodyKeys = Object.keys(req.body || {});
+    if (!isAdmin && userBranchId && BRANCH_SCOPED_TABLES.has(req.tableName)) {
+      if (!bodyKeys.includes('branch_id')) {
+        conditions.push('`branch_id` = ?');
+        params.push(userBranchId);
+      }
+    }
 
     // Parse body for filters and control keys
     for (const [key, val] of Object.entries(req.body || {})) {
