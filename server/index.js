@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
-const helmet = require('helmet');
 require('dotenv').config();
 const { initializeDatabase } = require('./db');
 const authRouter = require('./routes/auth');
@@ -12,11 +11,6 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// Security Headers
-app.use(helmet({
-  crossOriginResourcePolicy: false,
-}));
 
 // Compress responses
 app.use(compression());
