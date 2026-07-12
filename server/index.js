@@ -28,6 +28,14 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Disable caching for all API routes (prevents browsers from caching auth sessions and tables)
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+
 // Parse JSON request bodies
 app.use(express.json({ limit: '50mb' })); // Support large payloads e.g. bulk initializations
 
