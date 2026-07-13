@@ -525,7 +525,7 @@ function UsersTab() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ username: '', full_name: '', password: '', role: 'vendedor', branch_id: '', branch_name: '', permissions: [] });
+    setForm({ username: '', full_name: '', password: '', role: 'vendedor', branch_id: 'none', branch_name: '', permissions: [] });
     setShowForm(true);
   };
 
@@ -536,7 +536,7 @@ function UsersTab() {
       full_name: u.full_name || '',
       password: '',
       role: u.role || 'vendedor',
-      branch_id: u.branch_id || '',
+      branch_id: u.branch_id || 'none',
       branch_name: u.branch_name || '',
       permissions: Array.isArray(u.permissions) ? u.permissions : []
     });
@@ -545,7 +545,7 @@ function UsersTab() {
 
   const togglePermission = (perm) => {
     setForm(f => {
-      const perms = [...f.permissions];
+      const perms = Array.isArray(f.permissions) ? [...f.permissions] : [];
       const idx = perms.indexOf(perm);
       if (idx > -1) {
         perms.splice(idx, 1);
@@ -604,7 +604,7 @@ function UsersTab() {
                 </Button>
                 {u.username !== 'admin' && (
                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => { if(confirm('¿Seguro que deseas eliminar este usuario?')) remove.mutate(u.id); }}>
-                    <Trash className="w-4 h-4" />
+                     <Trash className="w-4 h-4" />
                   </Button>
                 )}
               </div>
@@ -648,10 +648,10 @@ function UsersTab() {
               </div>
               <div className="space-y-2">
                 <Label>Sucursal asignada</Label>
-                <Select value={form.branch_id} onValueChange={v => setForm({...form, branch_id: v})}>
+                <Select value={form.branch_id || 'none'} onValueChange={v => setForm({...form, branch_id: v})}>
                   <SelectTrigger><SelectValue placeholder="Ninguna (Admin)" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Ninguna</SelectItem>
+                    <SelectItem value="none">Ninguna</SelectItem>
                     {branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -665,7 +665,7 @@ function UsersTab() {
                   <div key={p.id} className="flex items-center justify-between p-1.5 border rounded bg-background">
                     <span className="text-xs font-medium">{p.label}</span>
                     <Switch
-                      checked={form.role === 'admin' ? true : form.permissions.includes(p.id)}
+                      checked={form.role === 'admin' ? true : (Array.isArray(form.permissions) ? form.permissions.includes(p.id) : false)}
                       onCheckedChange={() => togglePermission(p.id)}
                       disabled={form.role === 'admin'}
                     />
@@ -677,7 +677,11 @@ function UsersTab() {
               )}
             </div>
 
-            <Button className="w-full font-heading" onClick={() => save.mutate(form)} disabled={!form.username || (!editing && !form.password)}>Guardar Usuario</Button>
+            <Button className="w-full font-heading" onClick={() => {
+              const payload = { ...form };
+              if (payload.branch_id === 'none') payload.branch_id = null;
+              save.mutate(payload);
+            }} disabled={!form.username || (!editing && !form.password)}>Guardar Usuario</Button>
           </div>
         </DialogContent>
       </Dialog>

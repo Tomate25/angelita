@@ -56,8 +56,10 @@ export default function Customers() {
     },
   });
 
-  // Todos ven el catálogo completo de clientes
-  const scopedCustomers = customers;
+  // Filtrar clientes por sucursal si el usuario no es admin
+  const scopedCustomers = isBranchUser && userBranchIdFromProfile
+    ? customers.filter(c => c.branch_id === userBranchIdFromProfile)
+    : customers;
 
   const filtered = scopedCustomers.filter(c => {
     const matchesArchive = showArchived ? c.status === 'archived' : c.status !== 'archived';
@@ -166,8 +168,19 @@ export default function Customers() {
   };
 
   const handleSave = () => {
-    const branch = branches.find(b => b.name === form.branch_name);
-    saveMutation.mutate({ ...form, branch_id: branch?.id || '' });
+    let finalBranchId = form.branch_id || '';
+    let finalBranchName = form.branch_name || '';
+
+    if (isBranchUser && userBranchIdFromProfile) {
+      finalBranchId = userBranchIdFromProfile;
+      const userBranch = branches.find(b => b.id === userBranchIdFromProfile);
+      finalBranchName = userBranch ? userBranch.name : '';
+    } else {
+      const branch = branches.find(b => b.name === form.branch_name);
+      finalBranchId = branch?.id || '';
+    }
+
+    saveMutation.mutate({ ...form, branch_id: finalBranchId, branch_name: finalBranchName });
   };
 
   return (
@@ -267,7 +280,11 @@ export default function Customers() {
             <div><Label>Dirección</Label><Input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} /></div>
             <div>
               <Label>Punto de Venta</Label>
-              <Select value={form.branch_name || 'none'} onValueChange={v => setForm({ ...form, branch_name: v === 'none' ? '' : v })}>
+              <Select 
+                value={isBranchUser ? (branches.find(b => b.id === userBranchIdFromProfile)?.name || form.branch_name || 'none') : (form.branch_name || 'none')} 
+                onValueChange={v => setForm({ ...form, branch_name: v === 'none' ? '' : v })}
+                disabled={isBranchUser}
+              >
                 <SelectTrigger><SelectValue placeholder="Sin asignar" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Sin asignar</SelectItem>
