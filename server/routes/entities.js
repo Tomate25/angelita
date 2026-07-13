@@ -122,6 +122,14 @@ function deserializeRowForDB(row) {
       newRow[field] = newRow[field] ? 1 : 0;
     }
   }
+  // Convert ISO date strings (T and Z) into native JS Date objects 
+  // so the mysql2 driver formats them to YYYY-MM-DD HH:MM:SS for strict mode
+  for (const key of Object.keys(newRow)) {
+    const val = newRow[key];
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+      newRow[key] = new Date(val);
+    }
+  }
   return newRow;
 }
 
