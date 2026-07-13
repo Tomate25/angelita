@@ -99,8 +99,10 @@ export default function POS() {
     return null;
   }, [userBranchIdFromProfile, isBranchUser, userRole, branches]);
 
-  // Catálogo de clientes compartido para todas las sucursales
-  const scopedCustomers = customers;
+  // Catálogo de clientes filtrado para vendedores: sucursal + sin asignar
+  const scopedCustomers = isBranchUser && userBranchId
+    ? customers.filter(c => !c.branch_id || c.branch_id === userBranchId)
+    : customers;
 
   // Cajas disponibles:
   // 1. Para usuario de sucursal: solo cajas abiertas de su sucursal

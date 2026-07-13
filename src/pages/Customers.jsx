@@ -56,9 +56,9 @@ export default function Customers() {
     },
   });
 
-  // Filtrar clientes por sucursal si el usuario no es admin
+  // Filtrar clientes: el vendedor ve los de su sucursal + los que no tienen sucursal asignada (para que no salga vacío)
   const scopedCustomers = isBranchUser && userBranchIdFromProfile
-    ? customers.filter(c => c.branch_id === userBranchIdFromProfile)
+    ? customers.filter(c => !c.branch_id || c.branch_id === userBranchIdFromProfile)
     : customers;
 
   const filtered = scopedCustomers.filter(c => {
